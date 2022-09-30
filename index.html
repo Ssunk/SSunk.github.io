@@ -220,7 +220,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2022-09-30 10:44:50 / 修改时间：11:27:24" itemprop="dateCreated datePublished" datetime="2022-09-30T10:44:50+08:00">2022-09-30</time>
+              <time title="创建时间：2022-09-30 10:44:50 / 修改时间：11:31:00" itemprop="dateCreated datePublished" datetime="2022-09-30T10:44:50+08:00">2022-09-30</time>
             </span>
 
           
@@ -235,34 +235,14 @@
 
       
           <p>这两天帮朋友爬抖音的评论，爬的时间长了cookie失效导致从接口返回不到数据，故尝试模拟登录抖音进行爬虫记录一下。</p>
-<p>首先抓包</p>
-<p><img src="/images/image-20220930105102661.png" alt="image-20220930105102661"></p>
-<p>输入错误的密码点击登录，找到请求接口。</p>
-<p>查看请求数据，发现输入的账号和密码已被加密</p>
-<p><img src="/images/image-20220930105244518.png" alt="image-20220930105244518"></p>
-<p>通过请求数据，搜索关键字“<strong>password</strong>”</p>
-<p>通过分析找到疑似加密函数</p>
-<p>打个断点，重新点击登录</p>
-<p><img src="/images/image-20220930105905773.png" alt="image-20220930105905773"></p>
-<p>可以发现在这里确实停住了，此时显示的账号密码是明文，还没有被加密，单步执行后发现执行完accountLoginV2函数后账号密码会被加密，继续单步进入accountLoginV2函数内部，发现加密是在z函数中实现</p>
-<p><img src="/images/image-20220930111036186.png" alt="image-20220930111036186"></p>
-<p>先看一下z函数的实现</p>
-<p><img src="/images/image-20220930111159290.png" alt="image-20220930111159290"></p>
-<p>z函数接受两个参数，第一个参数是P函数的返回结果，第二个参数是固定的，知道了加密函数，加密参数，下一步就是补环境，将z函数复制到本地并手动补充各参数</p>
-<p>首先要成功运行z函数，那么就得通过P函数，查看P函数的实现，发现是assign方法</p>
-<p><img src="/images/image-20220930111343608.png" alt="image-20220930111343608"></p>
-<p>开始本地构造</p>
-<p><img src="/images/image-20220930111740128.png" alt="image-20220930111740128"></p>
-<p>尝试运行，发现w未定义，是z函数中调用了w函数，那么继续找到w函数补在本地</p>
-<p><img src="/images/image-20220930112103290.png" alt="image-20220930112103290"></p>
-<p>w函数很简单</p>
-<p><img src="/images/image-20220930112221116.png" alt="image-20220930112221116"></p>
-<p>补完环境继续运行，发现Y函数未定义，继续找到函数补在本地。</p>
-<p>补完环境后，尝试运行，运行成功，与之前请求的内容一样。</p>
-<p><img src="/images/image-20220930112458382.png" alt="image-20220930112458382"></p>
-<p>剩下的就用execjs运行这段js，配置好请求头，就可以用python模拟登录啦。</p>
-<p>完结！</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/09/30/%E6%8A%96%E9%9F%B3%E7%99%BB%E5%BD%95%E5%8A%A0%E5%AF%86js%E9%80%86%E5%90%91/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
