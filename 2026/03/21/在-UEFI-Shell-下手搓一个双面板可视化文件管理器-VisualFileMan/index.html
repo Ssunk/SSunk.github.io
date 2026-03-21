@@ -28,7 +28,7 @@
 <meta property="og:description" content="最近我在 EDK II 环境下折腾 UEFI 开发，发现原生的 UEFI Shell 采用纯命令行交互，在进行频繁的文件复制、移动和目录切换时效率很低。为了改善体验，我决定手搓一个类似于 Midnight Commander (mc) 的**双面板、纯文本可视化文件管理器 (Visual File Manager)**。 在开发过程中，我遇到了不少 UEFI 底层的坑和“玄学” Bug。这篇文章将">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-03-21T12:00:00.000Z">
-<meta property="article:modified_time" content="2026-03-21T12:01:37.279Z">
+<meta property="article:modified_time" content="2026-03-21T12:09:36.885Z">
 <meta property="article:author" content="Sun">
 <meta property="article:tag" content="UEFI">
 <meta property="article:tag" content="EDK2">
@@ -225,7 +225,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2026-03-21 20:00:00 / 修改时间：20:01:37" itemprop="dateCreated datePublished" datetime="2026-03-21T20:00:00+08:00">2026-03-21</time>
+              <time title="创建时间：2026-03-21 20:00:00 / 修改时间：20:09:36" itemprop="dateCreated datePublished" datetime="2026-03-21T20:00:00+08:00">2026-03-21</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -259,10 +259,10 @@
 <p>在开发过程中，我遇到了不少 UEFI 底层的坑和“玄学” Bug。这篇文章将记录整个开发过程以及遇到各类问题的解决思路。</p>
 <span id="more"></span>
 
-<h2 id="1-初步实现与双面板结构"><a href="#1-初步实现与双面板结构" class="headerlink" title="1. 初步实现与双面板结构"></a>1. 初步实现与双面板结构</h2><p>整个 APP 的基础是利用了 EDK II 的 <a href="cci:7://file:///home/sun/workspace/edk2/ShellPkg/Include/Library/ShellLib.h/home/sun/workspace/edk2/ShellPkg/Include/Library/ShellLib.h:0:0-0:0">ShellLib.h</a> 和系统协议（如 <code>EFI_SIMPLE_FILE_SYSTEM_PROTOCOL</code>）。<br>核心的数据结构分配了两个 <code>FILE_PANE</code> 实例，分别对应左右面板；利用 UEFI Console 的 <code>gST-&gt;ConOut-&gt;SetCursorPosition()</code> 把屏幕劈成了左右两半（通常是 <code>80x25</code> 或更大），实现了简单的文件结构展示并用颜色进行了区分（青色代表目录，绿色代表纯 <code>.efi</code> 可执行文件）。</p>
+<h2 id="1-初步实现与双面板结构"><a href="#1-初步实现与双面板结构" class="headerlink" title="1. 初步实现与双面板结构"></a>1. 初步实现与双面板结构</h2><p>整个 APP 的基础是利用了 EDK II 的 <code>ShellLib.h</code> 和系统协议（如 <code>EFI_SIMPLE_FILE_SYSTEM_PROTOCOL</code>）。<br>核心的数据结构分配了两个 <code>FILE_PANE</code> 实例，分别对应左右面板；利用 UEFI Console 的 <code>gST-&gt;ConOut-&gt;SetCursorPosition()</code> 把屏幕劈成了左右两半（通常是 <code>80x25</code> 或更大），实现了简单的文件结构展示并用颜色进行了区分（青色代表目录，绿色代表纯 <code>.efi</code> 可执行文件）。</p>
 <p>然而随着功能的堆叠，坑开始一个个出现。</p>
 <hr>
-<h2 id="2-踩坑与修复记录"><a href="#2-踩坑与修复记录" class="headerlink" title="2. 踩坑与修复记录"></a>2. 踩坑与修复记录</h2><h3 id="问题一：上下选择时屏幕闪烁极其严重"><a href="#问题一：上下选择时屏幕闪烁极其严重" class="headerlink" title="问题一：上下选择时屏幕闪烁极其严重"></a>问题一：上下选择时屏幕闪烁极其严重</h3><p><strong>现象：</strong> 每次按按键（哪怕只是上下挪动光标），整个页面都要“黑闪”一下才能刷新完毕，感觉非常不流畅。<br><strong>原因分析：</strong><br>为了保持界面干净，在绘制主循环 <code>DrawUI()</code> 中，我每次都调用了 <code>gST-&gt;ConOut-&gt;ClearScreen()</code> 来清空屏幕。<code>ClearScreen</code> 实际上会先将屏幕直接涂黑，然后再逐个字符覆盖。这样高频次清空重绘就会造成明显的黑屏闪烁。<br><strong>解决方案：</strong><br>移除主循环里的 <code>ClearScreen()</code>。既然每一行都有固定宽度，我们在输出文本时，根据 <code>PaneWidth</code> 动态计算还需要多少空格，调用自定义的 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:219:0-224:1">PrintCharTimes(L’ ‘, PadLen)</a> 补满剩余空间。<br>依靠<strong>“覆盖替换”</strong>而非“先清空后画”，即可做到 100% 丝滑无闪烁更新。</p>
+<h2 id="2-踩坑与修复记录"><a href="#2-踩坑与修复记录" class="headerlink" title="2. 踩坑与修复记录"></a>2. 踩坑与修复记录</h2><h3 id="问题一：上下选择时屏幕闪烁极其严重"><a href="#问题一：上下选择时屏幕闪烁极其严重" class="headerlink" title="问题一：上下选择时屏幕闪烁极其严重"></a>问题一：上下选择时屏幕闪烁极其严重</h3><p><strong>现象：</strong> 每次按按键（哪怕只是上下挪动光标），整个页面都要“黑闪”一下才能刷新完毕，感觉非常不流畅。<br><strong>原因分析：</strong><br>为了保持界面干净，在绘制主循环 <code>DrawUI()</code> 中，我每次都调用了 <code>gST-&gt;ConOut-&gt;ClearScreen()</code> 来清空屏幕。<code>ClearScreen</code> 实际上会先将屏幕直接涂黑，然后再逐个字符覆盖。这样高频次清空重绘就会造成明显的黑屏闪烁。<br><strong>解决方案：</strong><br>移除主循环里的 <code>ClearScreen()</code>。既然每一行都有固定宽度，我们在输出文本时，根据 <code>PaneWidth</code> 动态计算还需要多少空格，调用自定义的 <code>PrintCharTimes(L&#39; &#39;, PadLen)</code> 补满剩余空间。<br>依靠<strong>“覆盖替换”</strong>而非“先清空后画”，即可做到 100% 丝滑无闪烁更新。</p>
 <h3 id="问题二：顶部标题栏神秘消失"><a href="#问题二：顶部标题栏神秘消失" class="headerlink" title="问题二：顶部标题栏神秘消失"></a>问题二：顶部标题栏神秘消失</h3><p><strong>现象：</strong> 在添加了最后一行底部的“快捷键提示栏”后，屏幕最顶部的那行 <code>[FileManager v1.0]</code> 莫名其妙不见了。<br><strong>原因分析：</strong><br>在我的终端输出逻辑中，底部文本填充了大量的空格以试图对齐最右侧。当向 UEFI 控制台的<strong>最后一个字符（坐标：X&#x3D;79, Y&#x3D;24）</strong>打印内容时，终端的光标会自动向前推进一步，导致<strong>屏幕被整行向上滚动（Auto-Scroll）</strong>！这样位于 <code>Y=0</code> 的顶部栏就被强行顶出了屏幕。<br><strong>解决方案：</strong><br>在绘制最底下一行时，即使需要填充空格，也刻意让长度等于 <code>gColumns - 1</code>，将最后一个字符彻底悬空不操作，避免触发底层的屏幕滚屏。</p>
 <h3 id="问题三：UI-交互太反人类（无光标、删除死板）"><a href="#问题三：UI-交互太反人类（无光标、删除死板）" class="headerlink" title="问题三：UI 交互太反人类（无光标、删除死板）"></a>问题三：UI 交互太反人类（无光标、删除死板）</h3><p><strong>现象：</strong> </p>
 <ol>
@@ -271,18 +271,18 @@
 <li><code>F8删除</code> 时必须要键盘纯手打输入 <code>yes</code> 才能删。<br><strong>解决方案：</strong><br>为了优化体验，我彻底重写了一套轻量级的窗口组件：</li>
 </ol>
 <ul>
-<li><strong><a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:471:0-548:1">InputBox</a> (光标和修改支持)：</strong> 使用 <code>gST-&gt;ConOut-&gt;EnableCursor(..., TRUE)</code> 开启硬件光标。捕捉 <code>SCAN_LEFT / SCAN_RIGHT / SCAN_DELETE</code> 及 <code>0x08</code> (退格)，利用字符串缓冲区的整体左移&#x2F;右移自行实现了一个单行文本编辑器。</li>
-<li><strong>智能化路径拼接：</strong> 当你在目标打下 <code>fs1:\</code> 回车时，我的底层 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:550:0-576:1">AppendFileNameIfDirectory</a> 函数通过尝试 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:686:0-824:1">ShellOpenFileByName</a> 和 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:1075:0-1108:1">ShellFindFirstFile</a> 先判定目标是不是目录。如果是目录或者是盘符标识，代码自动在内存中把 <code>\原始文件名</code> 拼接上去。</li>
-<li><strong><a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:434:0-469:1">ConfirmBox</a>：</strong> 抛弃键盘手敲，只捕捉 <code>[Enter]</code> 和 <code>[Esc]</code>。</li>
+<li><strong><code>InputBox</code> (光标和修改支持)：</strong> 使用 <code>gST-&gt;ConOut-&gt;EnableCursor(..., TRUE)</code> 开启硬件光标。捕捉 <code>SCAN_LEFT / SCAN_RIGHT / SCAN_DELETE</code> 及 <code>0x08</code> (退格)，利用字符串缓冲区的整体左移&#x2F;右移自行实现了一个单行文本编辑器。</li>
+<li><strong>智能化路径拼接：</strong> 当你在目标打下 <code>fs1:\</code> 回车时，我的底层 <code>AppendFileNameIfDirectory</code> 函数通过尝试 <code>ShellOpenFileByName</code> 和 <code>ShellFindFirstFile</code> 先判定目标是不是目录。如果是目录或者是盘符标识，代码自动在内存中把 <code>\原始文件名</code> 拼接上去。</li>
+<li><strong><code>ConfirmBox</code>：</strong> 抛弃键盘手敲，只捕捉 <code>[Enter]</code> 和 <code>[Esc]</code>。</li>
 </ul>
 <h3 id="问题四：从根目录后退找不到文件系统，并偶发崩溃"><a href="#问题四：从根目录后退找不到文件系统，并偶发崩溃" class="headerlink" title="问题四：从根目录后退找不到文件系统，并偶发崩溃"></a>问题四：从根目录后退找不到文件系统，并偶发崩溃</h3><p><strong>现象：</strong> 在 <code>fs0:\</code> 下，如果按 <code>..</code> 想跳出磁盘，这在传统的 UEFI Shell 环境下是无效的。且如果我们在某个子目录运行该 App（比如 <code>fs0:\test\visual.efi</code> ），有时会根本不显示界面，直接报错 <code>Unsupported</code>。<br><strong>原因分析：</strong></p>
 <ol>
-<li><strong>Trailing Slash (尾随斜杠) 异常：</strong> 在 UEFI FAT 底层驱动中，如果直接以读取模式去 open 一个没有随尾带有 <code>\</code> 的纯目录路径（比如 <code>fs0:\test</code>），驱动可能会把它强行认定成“没有拓展名的 File”，从而在接下来的 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:1075:0-1108:1">ShellFindFirstFile</a> 检索它内部节点时，抛出 <code>EFI_UNSUPPORTED</code>，直接引发 App 级别的 Abort 崩溃。</li>
+<li><strong>Trailing Slash (尾随斜杠) 异常：</strong> 在 UEFI FAT 底层驱动中，如果直接以读取模式去 open 一个没有随尾带有 <code>\</code> 的纯目录路径（比如 <code>fs0:\test</code>），驱动可能会把它强行认定成“没有拓展名的 File”，从而在接下来的 <code>ShellFindFirstFile</code> 检索它内部节点时，抛出 <code>EFI_UNSUPPORTED</code>，直接引发 App 级别的 Abort 崩溃。</li>
 <li><strong>跨盘符迷失：</strong> 根路径没有父节点，用户就变成了“被锁在当前盘符的囚徒”。</li>
 </ol>
 <p><strong>终极解决方案与实现：</strong><br>我为此创造了一个虚拟的超级挂载点—— <strong><code>Drives:</code></strong></p>
 <ul>
-<li><strong>处理 Slash：</strong> 在 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:121:0-217:1">ReadDirectory</a> 最开始，无论是 <code>fs0:</code> 还是复杂的路径，全部做安全化处理：如果没有，强行附加 <code>\</code> 再去请求底层驱动打开，从源头断绝了因缺少反斜杠被驱动拒绝的问题。</li>
+<li><strong>处理 Slash：</strong> 在 <code>ReadDirectory</code> 最开始，无论是 <code>fs0:</code> 还是复杂的路径，全部做安全化处理：如果没有，强行附加 <code>\</code> 再去请求底层驱动打开，从源头断绝了因缺少反斜杠被驱动拒绝的问题。</li>
 <li><strong><code>Drives:</code> 虚拟挂载点</strong>：当识别到用户在根目录的 <code>[..]</code> 上按 Enter 时，将路径主动劫持为 <code>Drives:</code>。随后调用 <code>LocateHandleBuffer</code> 查找系统内所有的 <code>gEfiSimpleFileSystemProtocolGuid</code> 句柄，再顺藤摸瓜通过 <code>gEfiShellProtocol-&gt;GetMapFromDevicePath</code> 解析出类似于 <code>FS0</code>, <code>FS1</code>, <code>BLK0</code> 的真正映射名格式化成了虚拟的内部目录。<br>这样大家就能像在用真实的 OS 一样，在最外层自如地选择所有的挂载盘了！</li>
 </ul>
 <hr>
