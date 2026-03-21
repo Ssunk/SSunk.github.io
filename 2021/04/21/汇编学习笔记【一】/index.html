@@ -17,13 +17,13 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
+    var CONFIG = {"hostname":"ssunk.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
   </script>
 
   <meta name="description" content="Cpu从内存读取数据过程  cpu通过地址线将地址信息3发出 cpu通过控制线发出内存读命令，选中存储器芯片，并通知他，将要从中读取数据。 存储器将3号单元中的数据8通过数据线送入cpu。写操作和读操作的步骤相似，如向3号单元写入数据26 cpu通过地址线将信息3发出。 cpu通过控制线发出内存写命令，选中存储器芯片，并通知他，将要从中写入数据。 cpu通过数据线将数据26送入内存的3号单元。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="汇编学习笔记【一】">
-<meta property="og:url" content="http://example.com/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/index.html">
+<meta property="og:url" content="https://ssunk.github.io/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/index.html">
 <meta property="og:site_name" content="Sun&#39;s Blog">
 <meta property="og:description" content="Cpu从内存读取数据过程  cpu通过地址线将地址信息3发出 cpu通过控制线发出内存读命令，选中存储器芯片，并通知他，将要从中读取数据。 存储器将3号单元中的数据8通过数据线送入cpu。写操作和读操作的步骤相似，如向3号单元写入数据26 cpu通过地址线将信息3发出。 cpu通过控制线发出内存写命令，选中存储器芯片，并通知他，将要从中写入数据。 cpu通过数据线将数据26送入内存的3号单元。">
 <meta property="og:locale" content="zh_CN">
@@ -39,7 +39,7 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://img-blog.csdnimg.cn/20210311151108602.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NpbmF0XzM2NTAyODA3,size_16,color_FFFFFF,t_70">
 
-<link rel="canonical" href="http://example.com/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/">
+<link rel="canonical" href="https://ssunk.github.io/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/">
 
 
 <script id="page-configurations">
@@ -205,7 +205,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/">
+    <link itemprop="mainEntityOfPage" href="https://ssunk.github.io/2021/04/21/%E6%B1%87%E7%BC%96%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%90%E4%B8%80%E3%80%91/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
