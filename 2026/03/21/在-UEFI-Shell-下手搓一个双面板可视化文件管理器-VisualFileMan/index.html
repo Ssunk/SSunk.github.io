@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
+  </script>
+
+  <meta name="description" content="最近我在 EDK II 环境下折腾 UEFI 开发，发现原生的 UEFI Shell 采用纯命令行交互，在进行频繁的文件复制、移动和目录切换时效率很低。为了改善体验，我决定手搓一个类似于 Midnight Commander (mc) 的**双面板、纯文本可视化文件管理器 (Visual File Manager)**。 在开发过程中，我遇到了不少 UEFI 底层的坑和“玄学” Bug。这篇文章将">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在 UEFI Shell 下手搓一个双面板可视化文件管理器 (VisualFileMan)">
+<meta property="og:url" content="http://example.com/2026/03/21/%E5%9C%A8-UEFI-Shell-%E4%B8%8B%E6%89%8B%E6%90%93%E4%B8%80%E4%B8%AA%E5%8F%8C%E9%9D%A2%E6%9D%BF%E5%8F%AF%E8%A7%86%E5%8C%96%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8-VisualFileMan/index.html">
+<meta property="og:site_name" content="Sun&#39;s Blog">
+<meta property="og:description" content="最近我在 EDK II 环境下折腾 UEFI 开发，发现原生的 UEFI Shell 采用纯命令行交互，在进行频繁的文件复制、移动和目录切换时效率很低。为了改善体验，我决定手搓一个类似于 Midnight Commander (mc) 的**双面板、纯文本可视化文件管理器 (Visual File Manager)**。 在开发过程中，我遇到了不少 UEFI 底层的坑和“玄学” Bug。这篇文章将">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-21T12:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-21T12:01:37.279Z">
+<meta property="article:author" content="Sun">
+<meta property="article:tag" content="UEFI">
+<meta property="article:tag" content="EDK2">
+<meta property="article:tag" content="C语言">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2026/03/21/%E5%9C%A8-UEFI-Shell-%E4%B8%8B%E6%89%8B%E6%90%93%E4%B8%80%E4%B8%AA%E5%8F%8C%E9%9D%A2%E6%9D%BF%E5%8F%AF%E8%A7%86%E5%8C%96%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8-VisualFileMan/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>在 UEFI Shell 下手搓一个双面板可视化文件管理器 (VisualFileMan) | Sun's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Sun's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">13</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">6</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">14</span></a>
+
+  </li>
+        <li class="menu-item menu-item-links">
+
+    <a href="/links/" rel="section"><i class="link fa-fw"></i>友链</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2026/03/21/%E5%9C%A8-UEFI-Shell-%E4%B8%8B%E6%89%8B%E6%90%93%E4%B8%80%E4%B8%AA%E5%8F%8C%E9%9D%A2%E6%9D%BF%E5%8F%AF%E8%A7%86%E5%8C%96%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8-VisualFileMan/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Sun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Sun's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          在 UEFI Shell 下手搓一个双面板可视化文件管理器 (VisualFileMan)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2026-03-21 20:00:00 / 修改时间：20:01:37" itemprop="dateCreated datePublished" datetime="2026-03-21T20:00:00+08:00">2026-03-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%BA%95%E5%B1%82%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">底层开发</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>最近我在 EDK II 环境下折腾 UEFI 开发，发现原生的 UEFI Shell 采用纯命令行交互，在进行频繁的文件复制、移动和目录切换时效率很低。为了改善体验，我决定手搓一个类似于 Midnight Commander (<code>mc</code>) 的**双面板、纯文本可视化文件管理器 (Visual File Manager)**。</p>
+<p>在开发过程中，我遇到了不少 UEFI 底层的坑和“玄学” Bug。这篇文章将记录整个开发过程以及遇到各类问题的解决思路。</p>
+<span id="more"></span>
+
+<h2 id="1-初步实现与双面板结构"><a href="#1-初步实现与双面板结构" class="headerlink" title="1. 初步实现与双面板结构"></a>1. 初步实现与双面板结构</h2><p>整个 APP 的基础是利用了 EDK II 的 <a href="cci:7://file:///home/sun/workspace/edk2/ShellPkg/Include/Library/ShellLib.h/home/sun/workspace/edk2/ShellPkg/Include/Library/ShellLib.h:0:0-0:0">ShellLib.h</a> 和系统协议（如 <code>EFI_SIMPLE_FILE_SYSTEM_PROTOCOL</code>）。<br>核心的数据结构分配了两个 <code>FILE_PANE</code> 实例，分别对应左右面板；利用 UEFI Console 的 <code>gST-&gt;ConOut-&gt;SetCursorPosition()</code> 把屏幕劈成了左右两半（通常是 <code>80x25</code> 或更大），实现了简单的文件结构展示并用颜色进行了区分（青色代表目录，绿色代表纯 <code>.efi</code> 可执行文件）。</p>
+<p>然而随着功能的堆叠，坑开始一个个出现。</p>
+<hr>
+<h2 id="2-踩坑与修复记录"><a href="#2-踩坑与修复记录" class="headerlink" title="2. 踩坑与修复记录"></a>2. 踩坑与修复记录</h2><h3 id="问题一：上下选择时屏幕闪烁极其严重"><a href="#问题一：上下选择时屏幕闪烁极其严重" class="headerlink" title="问题一：上下选择时屏幕闪烁极其严重"></a>问题一：上下选择时屏幕闪烁极其严重</h3><p><strong>现象：</strong> 每次按按键（哪怕只是上下挪动光标），整个页面都要“黑闪”一下才能刷新完毕，感觉非常不流畅。<br><strong>原因分析：</strong><br>为了保持界面干净，在绘制主循环 <code>DrawUI()</code> 中，我每次都调用了 <code>gST-&gt;ConOut-&gt;ClearScreen()</code> 来清空屏幕。<code>ClearScreen</code> 实际上会先将屏幕直接涂黑，然后再逐个字符覆盖。这样高频次清空重绘就会造成明显的黑屏闪烁。<br><strong>解决方案：</strong><br>移除主循环里的 <code>ClearScreen()</code>。既然每一行都有固定宽度，我们在输出文本时，根据 <code>PaneWidth</code> 动态计算还需要多少空格，调用自定义的 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:219:0-224:1">PrintCharTimes(L’ ‘, PadLen)</a> 补满剩余空间。<br>依靠<strong>“覆盖替换”</strong>而非“先清空后画”，即可做到 100% 丝滑无闪烁更新。</p>
+<h3 id="问题二：顶部标题栏神秘消失"><a href="#问题二：顶部标题栏神秘消失" class="headerlink" title="问题二：顶部标题栏神秘消失"></a>问题二：顶部标题栏神秘消失</h3><p><strong>现象：</strong> 在添加了最后一行底部的“快捷键提示栏”后，屏幕最顶部的那行 <code>[FileManager v1.0]</code> 莫名其妙不见了。<br><strong>原因分析：</strong><br>在我的终端输出逻辑中，底部文本填充了大量的空格以试图对齐最右侧。当向 UEFI 控制台的<strong>最后一个字符（坐标：X&#x3D;79, Y&#x3D;24）</strong>打印内容时，终端的光标会自动向前推进一步，导致<strong>屏幕被整行向上滚动（Auto-Scroll）</strong>！这样位于 <code>Y=0</code> 的顶部栏就被强行顶出了屏幕。<br><strong>解决方案：</strong><br>在绘制最底下一行时，即使需要填充空格，也刻意让长度等于 <code>gColumns - 1</code>，将最后一个字符彻底悬空不操作，避免触发底层的屏幕滚屏。</p>
+<h3 id="问题三：UI-交互太反人类（无光标、删除死板）"><a href="#问题三：UI-交互太反人类（无光标、删除死板）" class="headerlink" title="问题三：UI 交互太反人类（无光标、删除死板）"></a>问题三：UI 交互太反人类（无光标、删除死板）</h3><p><strong>现象：</strong> </p>
+<ol>
+<li>做 <code>F5复制/F6移动</code> 敲目标路径时，屏幕上没有闪烁的光标，没法用左右方向键回退修改。</li>
+<li>目标路径如果是个纯目录名（如 <code>fs1:\test</code>），拷贝直接失败，非得让人手工把文件名也补齐。</li>
+<li><code>F8删除</code> 时必须要键盘纯手打输入 <code>yes</code> 才能删。<br><strong>解决方案：</strong><br>为了优化体验，我彻底重写了一套轻量级的窗口组件：</li>
+</ol>
+<ul>
+<li><strong><a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:471:0-548:1">InputBox</a> (光标和修改支持)：</strong> 使用 <code>gST-&gt;ConOut-&gt;EnableCursor(..., TRUE)</code> 开启硬件光标。捕捉 <code>SCAN_LEFT / SCAN_RIGHT / SCAN_DELETE</code> 及 <code>0x08</code> (退格)，利用字符串缓冲区的整体左移&#x2F;右移自行实现了一个单行文本编辑器。</li>
+<li><strong>智能化路径拼接：</strong> 当你在目标打下 <code>fs1:\</code> 回车时，我的底层 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:550:0-576:1">AppendFileNameIfDirectory</a> 函数通过尝试 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:686:0-824:1">ShellOpenFileByName</a> 和 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:1075:0-1108:1">ShellFindFirstFile</a> 先判定目标是不是目录。如果是目录或者是盘符标识，代码自动在内存中把 <code>\原始文件名</code> 拼接上去。</li>
+<li><strong><a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:434:0-469:1">ConfirmBox</a>：</strong> 抛弃键盘手敲，只捕捉 <code>[Enter]</code> 和 <code>[Esc]</code>。</li>
+</ul>
+<h3 id="问题四：从根目录后退找不到文件系统，并偶发崩溃"><a href="#问题四：从根目录后退找不到文件系统，并偶发崩溃" class="headerlink" title="问题四：从根目录后退找不到文件系统，并偶发崩溃"></a>问题四：从根目录后退找不到文件系统，并偶发崩溃</h3><p><strong>现象：</strong> 在 <code>fs0:\</code> 下，如果按 <code>..</code> 想跳出磁盘，这在传统的 UEFI Shell 环境下是无效的。且如果我们在某个子目录运行该 App（比如 <code>fs0:\test\visual.efi</code> ），有时会根本不显示界面，直接报错 <code>Unsupported</code>。<br><strong>原因分析：</strong></p>
+<ol>
+<li><strong>Trailing Slash (尾随斜杠) 异常：</strong> 在 UEFI FAT 底层驱动中，如果直接以读取模式去 open 一个没有随尾带有 <code>\</code> 的纯目录路径（比如 <code>fs0:\test</code>），驱动可能会把它强行认定成“没有拓展名的 File”，从而在接下来的 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Library/UefiShellLib/UefiShellLib.c:1075:0-1108:1">ShellFindFirstFile</a> 检索它内部节点时，抛出 <code>EFI_UNSUPPORTED</code>，直接引发 App 级别的 Abort 崩溃。</li>
+<li><strong>跨盘符迷失：</strong> 根路径没有父节点，用户就变成了“被锁在当前盘符的囚徒”。</li>
+</ol>
+<p><strong>终极解决方案与实现：</strong><br>我为此创造了一个虚拟的超级挂载点—— <strong><code>Drives:</code></strong></p>
+<ul>
+<li><strong>处理 Slash：</strong> 在 <a href="cci:1://file:///home/sun/workspace/edk2/ShellPkg/Application/VisualFileMan/VisualFileMan.c:121:0-217:1">ReadDirectory</a> 最开始，无论是 <code>fs0:</code> 还是复杂的路径，全部做安全化处理：如果没有，强行附加 <code>\</code> 再去请求底层驱动打开，从源头断绝了因缺少反斜杠被驱动拒绝的问题。</li>
+<li><strong><code>Drives:</code> 虚拟挂载点</strong>：当识别到用户在根目录的 <code>[..]</code> 上按 Enter 时，将路径主动劫持为 <code>Drives:</code>。随后调用 <code>LocateHandleBuffer</code> 查找系统内所有的 <code>gEfiSimpleFileSystemProtocolGuid</code> 句柄，再顺藤摸瓜通过 <code>gEfiShellProtocol-&gt;GetMapFromDevicePath</code> 解析出类似于 <code>FS0</code>, <code>FS1</code>, <code>BLK0</code> 的真正映射名格式化成了虚拟的内部目录。<br>这样大家就能像在用真实的 OS 一样，在最外层自如地选择所有的挂载盘了！</li>
+</ul>
+<hr>
+<h2 id="3-结语"><a href="#3-结语" class="headerlink" title="3. 结语"></a>3. 结语</h2><p>在现代 OS 里的“基操”，一旦深入到 BIOS 层级的 UEFI 去完全手推，就会涉及到控制台重绘、按键中断监听、底层句柄状态转换等各种“返璞归真”的操作。虽然踩了不少坑，但也借此加深了对 EDK II 以及 UEFI 文件系统通信协议的理解。如果你也需要一款 UEFI 下高效的文件管理工具，这种基于 ShellLib 开发的双面视图绝对是最佳的选择。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/UEFI/" rel="tag"># UEFI</a>
+              <a href="/tags/EDK2/" rel="tag"># EDK2</a>
+              <a href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag"># C语言</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/11/02/%E8%AE%B0%E5%90%91Linux%E5%86%85%E6%A0%B8%E7%A4%BE%E5%8C%BA%E6%8F%90%E4%BA%A4%E8%A1%A5%E4%B8%81/" rel="prev" title="记向Linux内核社区提交补丁">
+      <i class="fa fa-chevron-left"></i> 记向Linux内核社区提交补丁
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%88%9D%E6%AD%A5%E5%AE%9E%E7%8E%B0%E4%B8%8E%E5%8F%8C%E9%9D%A2%E6%9D%BF%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">1. 初步实现与双面板结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%B8%A9%E5%9D%91%E4%B8%8E%E4%BF%AE%E5%A4%8D%E8%AE%B0%E5%BD%95"><span class="nav-number">2.</span> <span class="nav-text">2. 踩坑与修复记录</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E4%B8%80%EF%BC%9A%E4%B8%8A%E4%B8%8B%E9%80%89%E6%8B%A9%E6%97%B6%E5%B1%8F%E5%B9%95%E9%97%AA%E7%83%81%E6%9E%81%E5%85%B6%E4%B8%A5%E9%87%8D"><span class="nav-number">2.1.</span> <span class="nav-text">问题一：上下选择时屏幕闪烁极其严重</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E4%BA%8C%EF%BC%9A%E9%A1%B6%E9%83%A8%E6%A0%87%E9%A2%98%E6%A0%8F%E7%A5%9E%E7%A7%98%E6%B6%88%E5%A4%B1"><span class="nav-number">2.2.</span> <span class="nav-text">问题二：顶部标题栏神秘消失</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E4%B8%89%EF%BC%9AUI-%E4%BA%A4%E4%BA%92%E5%A4%AA%E5%8F%8D%E4%BA%BA%E7%B1%BB%EF%BC%88%E6%97%A0%E5%85%89%E6%A0%87%E3%80%81%E5%88%A0%E9%99%A4%E6%AD%BB%E6%9D%BF%EF%BC%89"><span class="nav-number">2.3.</span> <span class="nav-text">问题三：UI 交互太反人类（无光标、删除死板）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E5%9B%9B%EF%BC%9A%E4%BB%8E%E6%A0%B9%E7%9B%AE%E5%BD%95%E5%90%8E%E9%80%80%E6%89%BE%E4%B8%8D%E5%88%B0%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%EF%BC%8C%E5%B9%B6%E5%81%B6%E5%8F%91%E5%B4%A9%E6%BA%83"><span class="nav-number">2.4.</span> <span class="nav-text">问题四：从根目录后退找不到文件系统，并偶发崩溃</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%BB%93%E8%AF%AD"><span class="nav-number">3.</span> <span class="nav-text">3. 结语</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Sun"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">Sun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Sun</span>
+</div>
+  <div class="powered-by">
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
