@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ssunk.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
+  </script>
+
+  <meta name="description" content="Claude Code 是 Anthropic 推出的官方 CLI 工具，默认使用 Claude 模型。但你知道吗？它也可以配置使用 NVIDIA NIM (NVIDIA Inference Microservice) 提供的开源模型，这对于想要使用本地推理或者尝试其他模型的开发者来说是一个非常实用的选择。 本文将介绍两种配置方式：手动环境变量配置（简单快速）和 使用 CC-Switch 统一管理">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Claude Code 使用 NVIDIA NIM API 配置教程">
+<meta property="og:url" content="https://ssunk.github.io/2026/04/06/Claude-Code-%E4%BD%BF%E7%94%A8-NVIDIA-NIM-API-%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B/index.html">
+<meta property="og:site_name" content="Sun&#39;s Blog">
+<meta property="og:description" content="Claude Code 是 Anthropic 推出的官方 CLI 工具，默认使用 Claude 模型。但你知道吗？它也可以配置使用 NVIDIA NIM (NVIDIA Inference Microservice) 提供的开源模型，这对于想要使用本地推理或者尝试其他模型的开发者来说是一个非常实用的选择。 本文将介绍两种配置方式：手动环境变量配置（简单快速）和 使用 CC-Switch 统一管理">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-04-06T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-04-06T14:00:20.320Z">
+<meta property="article:author" content="Sun">
+<meta property="article:tag" content="Claude Code">
+<meta property="article:tag" content="NVIDIA">
+<meta property="article:tag" content="AI工具">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://ssunk.github.io/2026/04/06/Claude-Code-%E4%BD%BF%E7%94%A8-NVIDIA-NIM-API-%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Claude Code 使用 NVIDIA NIM API 配置教程 | Sun's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Sun's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">19</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">6</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">16</span></a>
+
+  </li>
+        <li class="menu-item menu-item-links">
+
+    <a href="/links/" rel="section"><i class="link fa-fw"></i>友链</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://ssunk.github.io/2026/04/06/Claude-Code-%E4%BD%BF%E7%94%A8-NVIDIA-NIM-API-%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Sun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Sun's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Claude Code 使用 NVIDIA NIM API 配置教程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2026-04-06 12:00:00 / 修改时间：22:00:20" itemprop="dateCreated datePublished" datetime="2026-04-06T12:00:00+08:00">2026-04-06</time>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Claude Code 是 Anthropic 推出的官方 CLI 工具，默认使用 Claude 模型。但你知道吗？它也可以配置使用 NVIDIA NIM (NVIDIA Inference Microservice) 提供的开源模型，这对于想要使用本地推理或者尝试其他模型的开发者来说是一个非常实用的选择。</p>
+<p>本文将介绍两种配置方式：<strong>手动环境变量配置</strong>（简单快速）和 <strong>使用 CC-Switch 统一管理</strong>（推荐，功能更完善）。</p>
+<span id="more"></span>
+
+<h2 id="1-什么是-NVIDIA-NIM？"><a href="#1-什么是-NVIDIA-NIM？" class="headerlink" title="1. 什么是 NVIDIA NIM？"></a>1. 什么是 NVIDIA NIM？</h2><p>NVIDIA NIM (NVIDIA Inference Microservice) 是 NVIDIA 提供的容器化推理服务，支持多种开源大模型，包括：</p>
+<ul>
+<li><strong>Llama 3.1</strong> (8B, 70B)</li>
+<li><strong>Mistral Large</strong></li>
+<li><strong>NVIDIA Nemotron</strong> 系列</li>
+<li><strong>Qwen</strong> 系列等</li>
+</ul>
+<p>NIM 提供了 OpenAI 兼容的 API 格式，这使得它可以轻松集成到支持 OpenAI API 的工具中。</p>
+<h2 id="2-获取-NVIDIA-API-Key"><a href="#2-获取-NVIDIA-API-Key" class="headerlink" title="2. 获取 NVIDIA API Key"></a>2. 获取 NVIDIA API Key</h2><h3 id="方式一：使用-NVIDIA-云端服务"><a href="#方式一：使用-NVIDIA-云端服务" class="headerlink" title="方式一：使用 NVIDIA 云端服务"></a>方式一：使用 NVIDIA 云端服务</h3><ol>
+<li>访问 <a target="_blank" rel="noopener" href="https://build.nvidia.com/">NVIDIA NIM 官网</a></li>
+<li>注册并登录 NVIDIA 账号</li>
+<li>进入 API Keys 页面，创建新的 API Key</li>
+<li>保存好你的 API Key，它只会显示一次</li>
+</ol>
+<h3 id="方式二：本地部署-NIM"><a href="#方式二：本地部署-NIM" class="headerlink" title="方式二：本地部署 NIM"></a>方式二：本地部署 NIM</h3><p>如果你有 NVIDIA GPU，可以选择本地部署：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 登录 NVIDIA Container Registry</span></span><br><span class="line">docker login nvcr.io</span><br><span class="line"><span class="comment"># 用户名: $oauthtoken</span></span><br><span class="line"><span class="comment"># 密码: 你的 NVIDIA API Key</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 拉取并运行模型容器 (以 Llama 3.1 8B 为例)</span></span><br><span class="line">docker run -d --gpus all \</span><br><span class="line">  -e NVIDIA_API_KEY=your-api-key \</span><br><span class="line">  -p 8000:8000 \</span><br><span class="line">  nvcr.io/nim/nvidia/llama-3.1-8b-instruct:latest</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-配置-Claude-Code-使用-NVIDIA-API"><a href="#3-配置-Claude-Code-使用-NVIDIA-API" class="headerlink" title="3. 配置 Claude Code 使用 NVIDIA API"></a>3. 配置 Claude Code 使用 NVIDIA API</h2><h3 id="环境变量配置"><a href="#环境变量配置" class="headerlink" title="环境变量配置"></a>环境变量配置</h3><p>Claude Code 通过环境变量来配置 API 端点和密钥。打开终端，设置以下环境变量：</p>
+<p><strong>Linux&#x2F;macOS:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 设置 API 基础 URL (云端)</span></span><br><span class="line"><span class="built_in">export</span> ANTHROPIC_BASE_URL=<span class="string">&quot;https://integrate.api.nvidia.com/v1&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者本地部署</span></span><br><span class="line"><span class="built_in">export</span> ANTHROPIC_BASE_URL=<span class="string">&quot;http://localhost:8000/v1&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置 API Key</span></span><br><span class="line"><span class="built_in">export</span> ANTHROPIC_API_KEY=<span class="string">&quot;nvapi-xxxxx&quot;</span>  <span class="comment"># 你的 NVIDIA API Key</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Windows (PowerShell):</strong></p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$env:ANTHROPIC_BASE_URL</span>=<span class="string">&quot;https://integrate.api.nvidia.com/v1&quot;</span></span><br><span class="line"><span class="variable">$env:ANTHROPIC_API_KEY</span>=<span class="string">&quot;nvapi-xxxxx&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Windows (CMD):</strong></p>
+<figure class="highlight cmd"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> ANTHROPIC_BASE_URL=https://integrate.api.nvidia.com/v1</span><br><span class="line"><span class="built_in">set</span> ANTHROPIC_API_KEY=nvapi-xxxxx</span><br></pre></td></tr></table></figure>
+
+<h3 id="配置文件方式-推荐"><a href="#配置文件方式-推荐" class="headerlink" title="配置文件方式 (推荐)"></a>配置文件方式 (推荐)</h3><p>为了持久化配置，可以将环境变量写入配置文件：</p>
+<p><strong>Linux&#x2F;macOS - 添加到 <code>~/.bashrc</code> 或 <code>~/.zshrc</code>:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Claude Code NVIDIA NIM 配置</span></span><br><span class="line"><span class="built_in">export</span> ANTHROPIC_BASE_URL=<span class="string">&quot;https://integrate.api.nvidia.com/v1&quot;</span></span><br><span class="line"><span class="built_in">export</span> ANTHROPIC_API_KEY=<span class="string">&quot;nvapi-xxxxx&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>然后执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> ~/.bashrc  <span class="comment"># 或 source ~/.zshrc</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-启动-Claude-Code"><a href="#4-启动-Claude-Code" class="headerlink" title="4. 启动 Claude Code"></a>4. 启动 Claude Code</h2><p>配置完成后，直接运行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">claude</span><br></pre></td></tr></table></figure>
+
+<p>Claude Code 会使用你配置的 NVIDIA API 端点进行推理。</p>
+<h2 id="5-指定使用的模型"><a href="#5-指定使用的模型" class="headerlink" title="5. 指定使用的模型"></a>5. 指定使用的模型</h2><p>如果需要指定特定的模型，可以通过命令行参数：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">claude --model meta/llama-3.1-8b-instruct</span><br></pre></td></tr></table></figure>
+
+<p>或者在对话中使用 <code>/model</code> 命令切换模型。</p>
+<h2 id="6-常见问题排查"><a href="#6-常见问题排查" class="headerlink" title="6. 常见问题排查"></a>6. 常见问题排查</h2><h3 id="连接失败"><a href="#连接失败" class="headerlink" title="连接失败"></a>连接失败</h3><ul>
+<li>检查 API URL 是否正确</li>
+<li>确认 API Key 没有过期</li>
+<li>检查网络连接</li>
+</ul>
+<h3 id="本地部署问题"><a href="#本地部署问题" class="headerlink" title="本地部署问题"></a>本地部署问题</h3><ul>
+<li>确保已安装 <a target="_blank" rel="noopener" href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html">NVIDIA Container Toolkit</a></li>
+<li>检查 GPU 驱动是否最新</li>
+<li>确保有足够的显存 (不同模型要求不同)</li>
+</ul>
+<h3 id="模型响应异常"><a href="#模型响应异常" class="headerlink" title="模型响应异常"></a>模型响应异常</h3><ul>
+<li>检查模型名称是否正确</li>
+<li>查看 NVIDIA NIM 控制台的 API 调用日志</li>
+</ul>
+<h2 id="7-使用-CC-Switch-统一管理-推荐"><a href="#7-使用-CC-Switch-统一管理-推荐" class="headerlink" title="7. 使用 CC-Switch 统一管理 (推荐)"></a>7. 使用 CC-Switch 统一管理 (推荐)</h2><p>如前所述，直接通过环境变量配置 NVIDIA API 存在一些问题：API 格式兼容性、每次切换都要手动修改配置、缺乏统一管理。这时候可以使用 <strong>CC-Switch</strong> 来解决这些问题。</p>
+<h3 id="什么是-CC-Switch？"><a href="#什么是-CC-Switch？" class="headerlink" title="什么是 CC-Switch？"></a>什么是 CC-Switch？</h3><p>CC-Switch 是一个跨平台的桌面应用，用于统一管理多个 AI CLI 工具的 API 配置。它支持：</p>
+<ul>
+<li><strong>5 个 CLI 工具</strong>: Claude Code、Codex、Gemini CLI、OpenCode、OpenClaw</li>
+<li><strong>50+ 内置 Provider Presets</strong>: 包括 NVIDIA NIM、AWS Bedrock、各种社区 API 中转服务等</li>
+<li><strong>本地代理模式</strong>: 支持热切换、格式转换、自动故障转移</li>
+<li><strong>MCP&#x2F;Prompts&#x2F;Skills 统一管理</strong>: 一站式管理所有配置</li>
+</ul>
+<p>工作原理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Claude Code → CC-Switch (本地代理/配置管理) → NVIDIA NIM API</span><br><span class="line">                 ↓</span><br><span class="line">         格式转换 + 热切换 + 故障转移</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装-CC-Switch"><a href="#安装-CC-Switch" class="headerlink" title="安装 CC-Switch"></a>安装 CC-Switch</h3><p>CC-Switch 是一个桌面应用，支持 Windows、macOS 和 Linux。</p>
+<p><strong>Windows:</strong></p>
+<p>从 <a target="_blank" rel="noopener" href="https://github.com/farion1231/cc-switch/releases">GitHub Releases</a> 下载 <code>.msi</code> 安装包或 <code>.zip</code> 便携版。</p>
+<p><strong>macOS (推荐 Homebrew):</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">brew tap farion1231/ccswitch</span><br><span class="line">brew install --cask cc-switch</span><br></pre></td></tr></table></figure>
+
+<p>或者下载 <code>.dmg</code> 安装包。</p>
+<p><strong>Linux:</strong></p>
+<p>下载对应格式：</p>
+<ul>
+<li><code>.deb</code> (Debian&#x2F;Ubuntu)</li>
+<li><code>.rpm</code> (Fedora&#x2F;RHEL)</li>
+<li><code>.AppImage</code> (通用)</li>
+</ul>
+<p><strong>Arch Linux:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">paru -S cc-switch-bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用-CC-Switch-配置-NVIDIA-NIM"><a href="#使用-CC-Switch-配置-NVIDIA-NIM" class="headerlink" title="使用 CC-Switch 配置 NVIDIA NIM"></a>使用 CC-Switch 配置 NVIDIA NIM</h3><ol>
+<li><strong>添加 Provider</strong>: 点击 “Add Provider” → 在预设列表中找到 NVIDIA NIM → 点击导入</li>
+<li><strong>填写 API Key</strong>: 输入你的 NVIDIA API Key (<code>nvapi-xxxxx</code>)</li>
+<li><strong>选择模型</strong>: 设置默认模型（如 <code>meta/llama-3.1-8b-instruct</code>）</li>
+<li><strong>启用 Provider</strong>: 点击 “Enable” 或从系统托盘快速切换</li>
+<li><strong>重启终端</strong>: Claude Code 不需要重启，其他工具需要重启终端生效</li>
+</ol>
+<h3 id="CC-Switch-核心功能"><a href="#CC-Switch-核心功能" class="headerlink" title="CC-Switch 核心功能"></a>CC-Switch 核心功能</h3><p><strong>本地代理模式 (Proxy Mode):</strong></p>
+<ul>
+<li>热切换 Provider，无需重启 Claude Code</li>
+<li>自动格式转换 (Anthropic ↔ OpenAI)</li>
+<li>自动故障转移和熔断机制</li>
+<li>Provider 健康监控</li>
+</ul>
+<p><strong>统一 MCP 管理:</strong></p>
+<ul>
+<li>一个面板管理所有 CLI 工具的 MCP Server</li>
+<li>支持模板导入和自定义配置</li>
+<li>双向同步到配置文件</li>
+</ul>
+<p><strong>Prompts 管理:</strong></p>
+<ul>
+<li>Markdown 编辑器编写 CLAUDE.md &#x2F; GEMINI.md</li>
+<li>跨应用同步</li>
+<li>预设模板快速切换</li>
+</ul>
+<p><strong>Skills 管理:</strong></p>
+<ul>
+<li>从 GitHub 仓库一键安装 Skills</li>
+<li>自定义仓库管理</li>
+<li>支持 symlink 和文件复制两种模式</li>
+</ul>
+<p><strong>使用统计:</strong></p>
+<ul>
+<li>跟踪消费、请求次数、Token 使用量</li>
+<li>趋势图表展示</li>
+<li>详细请求日志</li>
+<li>自定义模型定价</li>
+</ul>
+<h3 id="CC-Switch-数据存储位置"><a href="#CC-Switch-数据存储位置" class="headerlink" title="CC-Switch 数据存储位置"></a>CC-Switch 数据存储位置</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">~/.cc-switch/</span><br><span class="line">├── cc-switch.db        # SQLite 数据库 (Provider/MCP/Prompts/Skills)</span><br><span class="line">├── settings.json       # 本地设置</span><br><span class="line">├── backups/            # 自动备份 (保留最近 10 个)</span><br><span class="line">├── skills/             # Skills 存储</span><br><span class="line">└── skill-backups/      # Skills 备份</span><br></pre></td></tr></table></figure>
+
+<h3 id="CC-Switch-常见问题"><a href="#CC-Switch-常见问题" class="headerlink" title="CC-Switch 常见问题"></a>CC-Switch 常见问题</h3><p><strong>Q: 切换 Provider 后需要重启吗？</strong></p>
+<ul>
+<li>Claude Code: 不需要重启，支持热切换</li>
+<li>其他工具: 需要重启终端生效</li>
+</ul>
+<p><strong>Q: 如何切换回官方登录？</strong></p>
+<ul>
+<li>添加一个 “Official Login” 预设 → 启用 → 运行登录流程</li>
+</ul>
+<p><strong>Q: 为什么不能删除当前活跃的 Provider？</strong></p>
+<ul>
+<li>系统需要保留一个活跃配置，删除所有配置会导致 CLI 工具无法使用</li>
+</ul>
+<p><strong>Q: macOS 安装后无法打开？</strong></p>
+<ul>
+<li>CC-Switch 已通过 Apple 代码签名和公证，可直接打开。推荐使用 <code>.dmg</code> 安装</li>
+</ul>
+<h2 id="8-注意事项"><a href="#8-注意事项" class="headerlink" title="8. 注意事项"></a>8. 注意事项</h2><ol>
+<li><p><strong>模型能力差异</strong>: 开源模型 (如 Llama) 与 Claude 模型在能力上存在差异，可能需要调整提示词策略。</p>
+</li>
+<li><p><strong>费用</strong>: NVIDIA 云端 API 有免费额度，超出后按使用量计费；本地部署则需要 GPU 硬件成本。</p>
+</li>
+<li><p><strong>速率限制</strong>: 注意 NVIDIA API 的速率限制，频繁调用可能触发限制。</p>
+</li>
+<li><p><strong>推荐使用 CC-Switch</strong>: 相比手动配置环境变量，CC-Switch 提供了更好的管理体验和兼容性保障。</p>
+</li>
+</ol>
+<h2 id="9-总结"><a href="#9-总结" class="headerlink" title="9. 总结"></a>9. 总结</h2><p>本文介绍了两种配置 Claude Code 使用 NVIDIA NIM API 的方式：</p>
+<p><strong>方式一：手动环境变量配置</strong> - 简单直接，适合快速测试，但存在 API 格式兼容性问题和切换不便。</p>
+<p><strong>方式二：使用 CC-Switch (推荐)</strong> - 跨平台桌面应用，提供 50+ Provider 预设、本地代理热切换、MCP&#x2F;Prompts&#x2F;Skills 统一管理、使用统计等功能，是管理多个 AI CLI 工具的最佳选择。</p>
+<p>如果你经常切换不同的 API Provider，或者需要管理多个 CLI 工具的配置，强烈推荐使用 CC-Switch。它不仅解决了兼容性问题，还大大提升了配置管理效率。</p>
+<hr>
+<p><strong>参考资料:</strong></p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://build.nvidia.com/">NVIDIA NIM 官方文档</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.anthropic.com/en/docs/claude-code">Claude Code 官方文档</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/farion1231/cc-switch">CC-Switch GitHub</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html">NVIDIA Container Toolkit</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Claude-Code/" rel="tag"># Claude Code</a>
+              <a href="/tags/NVIDIA/" rel="tag"># NVIDIA</a>
+              <a href="/tags/AI%E5%B7%A5%E5%85%B7/" rel="tag"># AI工具</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2026/03/28/%E4%B8%BB%E6%B5%81%E5%A4%A7%E6%A8%A1%E5%9E%8BJS%E9%80%86%E5%90%91%E8%83%BD%E5%8A%9B%E6%A8%AA%E5%90%91%E5%AF%B9%E6%AF%94-Claude-Oups-4-6-VS-Gemini3-1Pro/" rel="prev" title="主流大模型JS逆向能力横向对比(一): Claude Opus 4.6 VS Gemini 3.1 Pro">
+      <i class="fa fa-chevron-left"></i> 主流大模型JS逆向能力横向对比(一): Claude Opus 4.6 VS Gemini 3.1 Pro
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BB%80%E4%B9%88%E6%98%AF-NVIDIA-NIM%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">1. 什么是 NVIDIA NIM？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%8E%B7%E5%8F%96-NVIDIA-API-Key"><span class="nav-number">2.</span> <span class="nav-text">2. 获取 NVIDIA API Key</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F%E4%B8%80%EF%BC%9A%E4%BD%BF%E7%94%A8-NVIDIA-%E4%BA%91%E7%AB%AF%E6%9C%8D%E5%8A%A1"><span class="nav-number">2.1.</span> <span class="nav-text">方式一：使用 NVIDIA 云端服务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F%E4%BA%8C%EF%BC%9A%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2-NIM"><span class="nav-number">2.2.</span> <span class="nav-text">方式二：本地部署 NIM</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E9%85%8D%E7%BD%AE-Claude-Code-%E4%BD%BF%E7%94%A8-NVIDIA-API"><span class="nav-number">3.</span> <span class="nav-text">3. 配置 Claude Code 使用 NVIDIA API</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE"><span class="nav-number">3.1.</span> <span class="nav-text">环境变量配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E6%96%B9%E5%BC%8F-%E6%8E%A8%E8%8D%90"><span class="nav-number">3.2.</span> <span class="nav-text">配置文件方式 (推荐)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%90%AF%E5%8A%A8-Claude-Code"><span class="nav-number">4.</span> <span class="nav-text">4. 启动 Claude Code</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%8C%87%E5%AE%9A%E4%BD%BF%E7%94%A8%E7%9A%84%E6%A8%A1%E5%9E%8B"><span class="nav-number">5.</span> <span class="nav-text">5. 指定使用的模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-number">6.</span> <span class="nav-text">6. 常见问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E5%A4%B1%E8%B4%A5"><span class="nav-number">6.1.</span> <span class="nav-text">连接失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2%E9%97%AE%E9%A2%98"><span class="nav-number">6.2.</span> <span class="nav-text">本地部署问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E5%9E%8B%E5%93%8D%E5%BA%94%E5%BC%82%E5%B8%B8"><span class="nav-number">6.3.</span> <span class="nav-text">模型响应异常</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E4%BD%BF%E7%94%A8-CC-Switch-%E7%BB%9F%E4%B8%80%E7%AE%A1%E7%90%86-%E6%8E%A8%E8%8D%90"><span class="nav-number">7.</span> <span class="nav-text">7. 使用 CC-Switch 统一管理 (推荐)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-CC-Switch%EF%BC%9F"><span class="nav-number">7.1.</span> <span class="nav-text">什么是 CC-Switch？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%89%E8%A3%85-CC-Switch"><span class="nav-number">7.2.</span> <span class="nav-text">安装 CC-Switch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8-CC-Switch-%E9%85%8D%E7%BD%AE-NVIDIA-NIM"><span class="nav-number">7.3.</span> <span class="nav-text">使用 CC-Switch 配置 NVIDIA NIM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CC-Switch-%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD"><span class="nav-number">7.4.</span> <span class="nav-text">CC-Switch 核心功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CC-Switch-%E6%95%B0%E6%8D%AE%E5%AD%98%E5%82%A8%E4%BD%8D%E7%BD%AE"><span class="nav-number">7.5.</span> <span class="nav-text">CC-Switch 数据存储位置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CC-Switch-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">7.6.</span> <span class="nav-text">CC-Switch 常见问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">8.</span> <span class="nav-text">8. 注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E6%80%BB%E7%BB%93"><span class="nav-number">9.</span> <span class="nav-text">9. 总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Sun"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">Sun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">19</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Sun</span>
+</div>
+  <div class="powered-by">
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
