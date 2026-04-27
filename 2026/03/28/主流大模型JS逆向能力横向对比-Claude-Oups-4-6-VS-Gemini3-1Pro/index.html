@@ -28,7 +28,7 @@
 <meta property="og:description" content="刚好最近由于某影视会员到期了，刷剧基本都在某盗版影视网站，奈何广告太多遂直接通过Python爬虫将盗版视频网站电视剧的M3U8给扒了下来，再Vibe Coding了一个本地M3U8播放器实现了刷剧自由，朋友使用完后反馈看正常电影已经满足不了它了，需要能够实现刷18+剧的自由，通过简单的分析后发现拿到这些剧的播放链接需要进行层层解密，JS中的加密函数全部经过高度混淆，这些混淆的代码给人分析绝对头大，">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-03-28T15:53:57.000Z">
-<meta property="article:modified_time" content="2026-04-06T14:06:59.618Z">
+<meta property="article:modified_time" content="2026-04-27T11:35:48.531Z">
 <meta property="article:author" content="Sun">
 <meta property="article:tag" content="JS逆向">
 <meta property="article:tag" content="Claude">
@@ -231,7 +231,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2026-04-06 22:06:59" itemprop="dateModified" datetime="2026-04-06T22:06:59+08:00">2026-04-06</time>
+                <time title="修改时间：2026-04-27 19:35:48" itemprop="dateModified" datetime="2026-04-27T19:35:48+08:00">2026-04-27</time>
               </span>
 
           
@@ -256,9 +256,7 @@
 <p>目前在一众大模型中，Anthropic出品的<code>Claude Opus 4.6</code>可以说是一骑绝尘，Google的<code>Gemini</code>也在奋力追赶，本次就使用这两个大模型以同样的<code>提示词</code>对同一个经过高强混淆的JS代码中抠出我所需要的解密算法。</p>
 <span id="more"></span>
 
-<h2 id="1-收集加密信息"><a href="#1-收集加密信息" class="headerlink" title="1. 收集加密信息"></a>1. 收集加密信息</h2><p>既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推<br>          未完待续…</p>
-<hr>
-
+<h2 id="1-收集加密信息"><a href="#1-收集加密信息" class="headerlink" title="1. 收集加密信息"></a>1. 收集加密信息</h2><h2 id="既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推-未完待续…懒得写了，结论：Gemini略胜一筹，虽然都是一把过，Gemini文件生成更小，总结混淆后的js代码更简洁。项目地址：-m3u8-player-rust一开始是Electron-Vue-启动太慢使用rust重构"><a href="#既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推-未完待续…懒得写了，结论：Gemini略胜一筹，虽然都是一把过，Gemini文件生成更小，总结混淆后的js代码更简洁。项目地址：-m3u8-player-rust一开始是Electron-Vue-启动太慢使用rust重构" class="headerlink" title="既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推          未完待续…懒得写了，结论：Gemini略胜一筹，虽然都是一把过，Gemini文件生成更小，总结混淆后的js代码更简洁。项目地址： m3u8-player-rust一开始是Electron + Vue, 启动太慢使用rust重构"></a>既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推<br>          未完待续…<br>懒得写了，结论：Gemini略胜一筹，虽然都是一把过，Gemini文件生成更小，总结混淆后的js代码更简洁。<br>项目地址： <a target="_blank" rel="noopener" href="https://github.com/Ssunk/m3u8-player-rust">m3u8-player-rust</a><br>一开始是Electron + Vue, 启动太慢使用rust重构</h2>
     </div>
 
     
@@ -343,7 +341,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%94%B6%E9%9B%86%E5%8A%A0%E5%AF%86%E4%BF%A1%E6%81%AF"><span class="nav-number">1.</span> <span class="nav-text">1. 收集加密信息</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%94%B6%E9%9B%86%E5%8A%A0%E5%AF%86%E4%BF%A1%E6%81%AF"><span class="nav-number">1.</span> <span class="nav-text">1. 收集加密信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A2%E7%84%B6%E6%9C%80%E7%BB%88%E8%A6%81%E6%8B%BF%E5%88%B0%E7%9A%84%E6%98%AF%E6%92%AD%E6%94%BE%E9%93%BE%E6%8E%A5%EF%BC%8C%E9%82%A3%E4%B9%88%E5%B0%B1%E4%BB%8E%E6%92%AD%E6%94%BE%E9%93%BE%E6%8E%A5%E5%BC%80%E5%A7%8B%E5%BE%80%E5%89%8D%E4%B8%80%E5%B1%82%E5%B1%82%E7%9A%84%E5%90%91%E5%89%8D%E5%8F%8D%E6%8E%A8-%E6%9C%AA%E5%AE%8C%E5%BE%85%E7%BB%AD%E2%80%A6%E6%87%92%E5%BE%97%E5%86%99%E4%BA%86%EF%BC%8C%E7%BB%93%E8%AE%BA%EF%BC%9AGemini%E7%95%A5%E8%83%9C%E4%B8%80%E7%AD%B9%EF%BC%8C%E8%99%BD%E7%84%B6%E9%83%BD%E6%98%AF%E4%B8%80%E6%8A%8A%E8%BF%87%EF%BC%8CGemini%E6%96%87%E4%BB%B6%E7%94%9F%E6%88%90%E6%9B%B4%E5%B0%8F%EF%BC%8C%E6%80%BB%E7%BB%93%E6%B7%B7%E6%B7%86%E5%90%8E%E7%9A%84js%E4%BB%A3%E7%A0%81%E6%9B%B4%E7%AE%80%E6%B4%81%E3%80%82%E9%A1%B9%E7%9B%AE%E5%9C%B0%E5%9D%80%EF%BC%9A-m3u8-player-rust%E4%B8%80%E5%BC%80%E5%A7%8B%E6%98%AFElectron-Vue-%E5%90%AF%E5%8A%A8%E5%A4%AA%E6%85%A2%E4%BD%BF%E7%94%A8rust%E9%87%8D%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">既然最终要拿到的是播放链接，那么就从播放链接开始往前一层层的向前反推          未完待续…懒得写了，结论：Gemini略胜一筹，虽然都是一把过，Gemini文件生成更小，总结混淆后的js代码更简洁。项目地址： m3u8-player-rust一开始是Electron + Vue, 启动太慢使用rust重构</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
